@@ -18,16 +18,19 @@ use Storable;
 use File::Copy;
 use DateTime;
 use JSON::RPC::Legacy::Server::Daemon;
+use URI::Encode qw(uri_encode uri_decode);
 
 my $stop = 0;
 my $start = 0;
 my $max_workers = 3;
 my $max_retries = 5;
 my @newurls;
-my $pidfile  = $ENV{'HOME'} . '/' . '.ge-downloader.pid';
-my $queue    = $ENV{'HOME'} . '/' . '.ge-queue';
-my $tmp_file = $ENV{'HOME'} . '/' . '.ge-sync-tmp';
-my $dl_dir   = $ENV{'HOME'} . '/' . '/ge-downloads/';
+my $pidfile          = $ENV{'HOME'} . '/' . '.ge-downloader.pid';
+my $enablerpcdaemon  = (1 == 1);
+my $rpcdaemonpidfile = $ENV{'HOME'} . '/' . '.ge-downloader-rpc-daemon.pid';
+my $queue    	     = $ENV{'HOME'} . '/' . '.ge-queue';
+my $tmp_file         = $ENV{'HOME'} . '/' . '.ge-sync-tmp';
+my $dl_dir           = $ENV{'HOME'} . '/' . '/ge-downloads/';
 my $rpc_pid = -1;
 chdir($dl_dir);
 my $long_retries_file = $ENV{'HOME'} . '/' . '.ge-long-retries';
@@ -89,7 +92,9 @@ sub reverse_queue {
 sub handle_stop {
 	print "Received stop request. Will stop after this download completes.\n";
 	$stop = (1 == 1);
-	if ($rpc_pid > 0) {
+	return if ! $enablerpcdaemon;
+	my $rpc_pid = get_rpc_daemon_pid();
+	if (defined($rpc_pid) && $rpc_pid > 0) {
 		kill 'TERM', $rpc_pid;
 	}
 }
@@ -130,16 +135,24 @@ sub timestamp {
         return $dt->ymd . ' ' . $dt->hms;
 }
 
-sub get_processor_pid {
+sub get_rpc_daemon_pid {
+	return get_processor_pid_from_file($rpcdaemonpidfile);
+}
 
-	open(my $file, '<', $pidfile);
+sub get_processor_pid {
+	return get_processor_pid_from_file($pidfile);
+}
+
+sub get_processor_pid_from_file {
+	my $filename = shift;
+	open(my $file, '<', $filename) or return undef;
 	my $pid = <$file>;
 	close($file);
 	if($pid !~ /(\d+)/) {
 		return undef;
 	}
 
-	return $1;
+	return int($1);
 }
 
 sub add_new_urls {
@@ -168,18 +181,23 @@ sub add_new_urls_args {
 }
 
 sub do_stop {
-
 	my $pid = get_processor_pid();
 	kill('TERM', $pid);
-
 }
 
 sub write_pid {
+	return write_pid_to_file($pidfile);
+}
 
-	open(my $file, '>', $pidfile);
+sub write_rpc_daemon_pid {
+	return write_pid_to_file($rpcdaemonpidfile);
+}
+
+sub write_pid_to_file {
+	my $filename = shift;
+	open(my $file, '>', $filename);
 	print $file $PID;
 	close($file);
-
 }
 
 sub check_running {
@@ -215,7 +233,7 @@ sub do_start {
 
 	kill('USR1', $PID); # Check for enqueued items
 
-	#run_rpc_daemon();
+	run_rpc_daemon();
 
 	while(! $stop) {
 
@@ -591,32 +609,72 @@ sub find_redownloads {
 my $parent_pid;
 
 sub run_rpc_daemon {
+	if (!$enablerpcdaemon) {
+		return;
+	}
 	$parent_pid = $$;
 	my $pid = fork();
 	if ($pid < 0) {
 		die("Failed to fork RPC daemon\n");
 	}
 	if ($pid != 0) {
-		$rpc_pid = $pid;
-		print "RPC Daemon running with pid: $pid\n";
 		# Parent just continues on.
 		return;
 	}
-	JSON::RPC::Legacy::Server::Daemon->new(
-		LocalPort => ord('g') * 256 + ord('e'),  # 26469
-		LocalAddr => '127.0.0.1')
-            ->dispatch({'/jsonrpc/API' => 'GehdRpc'})
-            ->handle();
+	my $pid2 = fork();
+	if ($pid2 != 0) {
+		# Double fork
+		exit();
+	}
+	use Mojo::Server::Daemon;
+	print "Starting RPC daemon with pid: $PID\n";
+	write_rpc_daemon_pid();
+	my $port = int(ord('g') * 256 + ord('e'));  # 26469
+	my $daemon = Mojo::Server::Daemon->new(
+		listen => ['http://127.0.0.1:' . $port]);
+	$daemon->unsubscribe('request');
+	$daemon->on(request => \&rpc_daemon_request_handler);
+	$daemon->run;
 }
 
-package GehdRpc;
-
-use base qw(JSON::RPC::Legacy::Procedure);
-
-sub enqueue : Public(addr:string) {
-	my ($s, $req) = @_;
-	print  $req->{'addr'} . " requested via rpc\n";
-	my @urls;
-	$urls[0] = $req->{'addr'};
-	add_new_urls_args($tmp_file, \@urls);
+sub validate_url {
+	my $url = shift;
+	if ($url =~ /^http:\/\/g\.e-hentai\.org\/g\/[0-9a-f]+\/[0-9a-f]+\/?$/) {
+		return 1==1;
+	}
+	return 0==1;
 }
+
+sub rpc_daemon_request_handler {
+	my ($daemon, $tx) = @_;
+	my $method = $tx->req->method;
+	my $path   = $tx->req->url->path;
+
+	$tx->res->code(200);
+	$tx->res->headers->content_type('text/plain');
+
+	if (!defined($tx->req->url->query)) {
+		$tx->res->body("FAIL: no query");		
+		$tx->resume();
+		return;
+	}
+	if ($tx->req->url->query !~ /^addr=(.*)$/) {
+		$tx->res->body("FAIL: needs an addr");
+		$tx->resume();
+		return;
+	}
+	my $url = uri_decode($1);
+	if (!validate_url($url)) {
+		$tx->res->body("FAIL: couldn't validate url");
+		$tx->resume();
+		return;
+	}
+	print "RPC request to add url: $url\n";
+	@newurls = [];
+	$newurls[0] = $url;
+	add_new_urls();
+	$tx->res->body("SUCCESS");
+	$tx->resume();
+}
+
+

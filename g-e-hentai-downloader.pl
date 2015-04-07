@@ -166,7 +166,7 @@ sub add_new_urls_args {
 	flock($file, LOCK_EX);
 	seek($file, 0, SEEK_END);
 
-	for(my $i = 0; $i <= $#newurls; ++$i) {
+	for(my $i = 0; $i <= $#urls; ++$i) {
 		print $file $urls[$i] . "\n";
 	}
 	flock($file, LOCK_UN);
@@ -670,9 +670,9 @@ sub rpc_daemon_request_handler {
 		return;
 	}
 	print "RPC request to add url: $url\n";
-	@newurls = [];
-	$newurls[0] = $url;
-	add_new_urls();
+	my @urls = [];
+	$urls[0] = $url;
+	add_new_urls($tmp_file, \@urls);
 	$tx->res->body("SUCCESS");
 	$tx->resume();
 }

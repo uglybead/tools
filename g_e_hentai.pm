@@ -19,6 +19,7 @@ use English;
 use Storable;
 use File::Copy;
 use DateTime;
+use Digest::SHA1  qw(sha1_hex);
 
 my $bindir = dirname(__FILE__);
 $INC[$#INC+1] = $bindir;
@@ -32,6 +33,7 @@ our @EXPORT_OK = qw(fetch_from_g_e is_g_e_url);
 my $ge_max_workers = 3;
 my $ge_max_retries = 5;
 my @ge_badfiles = ($bindir . '/g-e-bad-image-1.gif', $bindir . '/g-e-bad-image-2.gif');
+my @ge_bad_hashes = ('f54b887b017694dc25eb1a1404f71981885f8ed9');
 my $ge_long_retries_file = $ENV{'HOME'} . '/' . '.ge-long-retries';
 
 sub is_g_e_url {
@@ -197,8 +199,9 @@ sub checkFile {
 
 	my $lfile = shift;
 
-	for my $bdfile (@ge_badfiles) {
-		if(compare($bdfile, $lfile) == 0) {
+	my $lfile_hash = sha1_hex(fileGetContents($lfile));
+	for my $bad_hash (@ge_bad_hashes) {
+		if($lfile_hash eq $bad_hash) {
 			print "Found bandwidth exceeded image! Sleeping for quite a while\n";
 			deepsleep(4 * 60 * 60);
 			return 0==1;

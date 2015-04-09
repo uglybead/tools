@@ -2,6 +2,7 @@
 // @name        g-e-rpc
 // @namespace   blah
 // @include     http://g.e-hentai.org/g/*/*
+// @include	http://thedoujin.com/index.php/categories/*
 // @version     1
 // @grant       GM_xmlhttpRequest
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js
@@ -27,10 +28,26 @@ function RequestRpc(url) {
   window.postMessage(request_txt, "*");
 }
 
+function getTargetId(url) {
+  var matchers = [["http://g.e-hentai.org/g", "#gn"],
+		  ["http://thedoujin.com/index.php/categories/", "#add-favorite"]];
+  for(var i = 0; i < matchers.length; ++i) {
+    if (url.substring(0, matchers[i][0].length) == matchers[i][0]) {
+      return matchers[i][1];
+    }
+  }
+  return null;
+}
+
 function addDlLink() {
   console.log("ran addDlLink");
   var here = window.location.href;
-  $("#gn").after("<a id='dler'>[ x ]</a>");
+  var target_id = getTargetId(here);
+  if (target_id == null) {
+    console.log("No known target_id for url");
+    return; 
+  }
+  $(target_id).after("<a id='dler'>[ x ]</a>");
   $("#dler").click(function() {
     RequestRpc(here);
   });

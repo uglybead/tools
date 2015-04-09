@@ -19,9 +19,10 @@ use File::Copy;
 use DateTime;
 use JSON::RPC::Legacy::Server::Daemon;
 use URI::Encode qw(uri_encode uri_decode);
+use File::Spec;
+use lib dirname(File::Spec->rel2abs(__FILE__));
 
-my $bindir = dirname(__FILE__);
-$INC[$#INC+1] = $bindir;
+my $bindir = dirname(File::Spec->rel2abs(__FILE__));
 
 use g_e_hentai qw(fetch_from_g_e is_g_e_url);
 use the_doujin qw(fetch_from_the_doujin is_the_doujin_url);

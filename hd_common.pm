@@ -19,9 +19,10 @@ use English;
 use Storable;
 use File::Copy;
 use DateTime;
+use File::Spec;
+use lib dirname(File::Spec->rel2abs(__FILE__));
 
-my $bindir = dirname(__FILE__);
-$INC[$#INC+1] = $bindir;
+my $bindir = dirname(File::Spec->rel2abs(__FILE__));;
 
 use Exporter qw(import);
 

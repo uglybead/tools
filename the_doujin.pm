@@ -19,10 +19,9 @@ use English;
 use Storable;
 use File::Copy;
 use DateTime;
-
-my $bindir = dirname(__FILE__);
-$INC[$#INC+1] = $bindir;
-
+use File::Spec;
+use lib dirname(File::Spec->rel2abs(__FILE__));
+ 
 use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
 
 use Exporter qw(import);

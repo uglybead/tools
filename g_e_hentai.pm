@@ -19,10 +19,9 @@ use English;
 use Storable;
 use File::Copy;
 use DateTime;
-use Digest::SHA1  qw(sha1_hex);
-
-my $bindir = dirname(__FILE__);
-$INC[$#INC+1] = $bindir;
+use Digest::SHA qw(sha1_hex);
+use File::Spec;
+use lib dirname(File::Spec->rel2abs(__FILE__));
 
 use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
 
@@ -30,10 +29,11 @@ use Exporter qw(import);
 
 our @EXPORT_OK = qw(fetch_from_g_e is_g_e_url);
 
+my $bindir = dirname(File::Spec->rel2abs(__FILE__));
 my $ge_max_workers = 3;
 my $ge_max_retries = 5;
-my @ge_badfiles = ($bindir . '/g-e-bad-image-1.gif', $bindir . '/g-e-bad-image-2.gif');
-my @ge_bad_hashes = ('f54b887b017694dc25eb1a1404f71981885f8ed9');
+my @ge_bad_hashes = ('f54b887b017694dc25eb1a1404f71981885f8ed9',
+		     '6a0379fb64e30cc810f1ef368f586d714beddb04');
 my $ge_long_retries_file = $ENV{'HOME'} . '/' . '.ge-long-retries';
 
 sub is_g_e_url {

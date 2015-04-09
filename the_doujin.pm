@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w
 
+package the_doujin;
+
 use strict;
 use warnings;
 use Cwd;
@@ -18,17 +20,41 @@ use Storable;
 use File::Copy;
 use DateTime;
 
+my $bindir = dirname(__FILE__);
+$INC[$#INC+1] = $bindir;
+
+use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
+
+use Exporter qw(import);
+
+our @EXPORT_OK = qw(fetch_from_the_doujin is_the_doujin_url);
+
 my $default_workers = 3;
 my $max_workers = $default_workers;
 my $dl_dir   = $ENV{'HOME'} . '/' . '/ge-downloads/';
 # Limit the usable fetchers.
 $File::Fetch::BLACKLIST = [qw| wget curl lftp fetch lynx iosock|];
 
-sub main {
-	set_working_directory();
-	if ($ARGV[0] =~ /^\d+$/) {
-		fetch_manga($ARGV[0]);
+sub is_the_doujin_url {
+	my $url = shift;
+	return match_the_doujin($url);
+}
+
+sub match_the_doujin {
+	my $url = shift;
+	if ($url =~ /^http:\/\/thedoujin.com\/index.php\/categories\/\d+$/) {
+		return 1==1;
 	}
+	return 1==0;
+}
+
+sub fetch_from_the_doujin {
+	my $url = shift;
+	if ($url !~ /^http:\/\/thedoujin.com\/index.php\/categories\/(\d+)$/) {
+		print "Invalid the doujin url.\n";
+		return;
+	}
+	fetch_manga($1);
 }
 
 
@@ -47,19 +73,6 @@ sub fetch_manga {
 	write_original_url($manga_id, $title);
 	my %page_map = build_page_map($manga_id);
 	download_all_pages(\%page_map, $title, $outdir);
-}
-
-sub set_working_directory {
-	if (! -e $dl_dir) {
-		mkdir($dl_dir);
-	}
-	if (! -d $dl_dir) {
-		die("Download directory [$dl_dir] is not a directory!");
-	}
-	if (! -w $dl_dir) {
-		die("Downlaod directory [$dl_dir] is not writable!");
-	}
-	chdir($dl_dir) or die("Unable to set working directory to [$dl_dir]");
 }
 
 sub write_original_url {
@@ -127,6 +140,10 @@ sub download_file_with_retry_to {
 	my $url = shift;
 	my $destination = shift;
 	my $retries = shift;
+	if ($retries < 0) {
+		print "Unable to download [$url] => [$destination]\n";
+		exit();
+	}
 	
 	my $ff = undef;
         $ff = File::Fetch->new(uri => $url);
@@ -213,34 +230,10 @@ sub category_url {
 	return "http://thedoujin.com/index.php/categories/" . $manga_id;
 }
 
-sub getDomObj {
-        my $url = shift;
-        my $dt = `curl --max-redirs 8 '$url' 2>/dev/null`;
-        my $dom = Mojo::DOM->new($dt);
-
-        return $dom;
-}
-
 sub random_deep_sleep {
 	my $minimum = shift();
 	my $maximum = shift();
 	deepsleep($minimum + rand($maximum - $minimum));
 }
 
-sub deepsleep {
-        # To keep the various signals from cutting sleeps short
-        my $limit = shift;
-
-        my $end = time() + $limit;
-
-        while(time() < $end) {
-                my $ns = $end - time();
-                if($ns >= 1) {
-                        sleep($ns);
-                } else {
-                        sleep(1);
-                }
-        }
-}
-
-main();
+1;

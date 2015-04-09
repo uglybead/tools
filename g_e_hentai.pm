@@ -23,7 +23,7 @@ use DateTime;
 my $bindir = dirname(__FILE__);
 $INC[$#INC+1] = $bindir;
 
-use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
+use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
 
 use Exporter qw(import);
 

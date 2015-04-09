@@ -24,10 +24,11 @@ my $bindir = dirname(__FILE__);
 $INC[$#INC+1] = $bindir;
 
 use g_e_hentai qw(fetch_from_g_e is_g_e_url);
-use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
+use the_doujin qw(fetch_from_the_doujin is_the_doujin_url);
+use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
 
-my @handlers;
-push @handlers, make_pair(\&is_g_e_url, \&fetch_from_g_e);
+my @handlers = (make_pair(\&is_g_e_url,        \&fetch_from_g_e),
+		make_pair(\&is_the_doujin_url, \&fetch_from_the_doujin));
 
 my $stop = 0;
 my $start = 0;
@@ -147,11 +148,6 @@ sub handle_new_urls {
 
 	print "Add request finished :" . timestamp() . "\n";
 
-};
-
-sub timestamp {
-	my $dt = DateTime->now();
-        return $dt->ymd . ' ' . $dt->hms;
 }
 
 sub get_rpc_daemon_pid {
@@ -236,7 +232,17 @@ sub check_running {
 	}
 
 	return $1 > 0;
+}
 
+sub run_appropriate_handler {
+	my $url = shift;
+	for (my $i = 0; $i <=$#handlers; ++$i) {
+		my ($checker, $downloader) = @{ $handlers[$i] };
+		if (&$checker($url)) {
+			return &$downloader($url);
+		}
+	}
+	print "None of the handlers knew how to handle: [$url]\n";
 }
 
 sub do_start {
@@ -267,7 +273,7 @@ sub do_start {
 		}
 
 		my $nxturl = shift(@tied_queue);
-		fetch_from_g_e($nxturl);
+		run_appropriate_handler($nxturl);
 		$wait_notify = 0;
 
 	}
@@ -303,16 +309,14 @@ sub run_rpc_daemon {
 	use Mojo::Server::Daemon;
 	print "Starting RPC daemon with pid: $PID\n";
 	write_rpc_daemon_pid();
+	$SIG{'TERM'} = "DEFAULT";  # Infinite kill loops are bad
 	my $port = int(ord('g') * 256 + ord('e'));  # 26469
 	my $daemon = Mojo::Server::Daemon->new(
 		listen => ['http://127.0.0.1:' . $port]);
 	$daemon->unsubscribe('request');
 	$daemon->on(request => \&rpc_daemon_request_handler);
 	$daemon->run;
-}
-
-sub validate_url {
-	return is_understood_url(shift());
+	die();
 }
 
 sub make_pair {
@@ -333,23 +337,26 @@ sub rpc_daemon_request_handler {
 	if (!defined($tx->req->url->query)) {
 		$tx->res->body("FAIL: no query");		
 		$tx->resume();
+		print "Failed due to no query\n";
 		return;
 	}
 	if ($tx->req->url->query !~ /^addr=(.*)$/) {
 		$tx->res->body("FAIL: needs an addr");
 		$tx->resume();
+		print "Failed due to no addr\n";
 		return;
 	}
 	my $url = uri_decode($1);
-	if (!validate_url($url)) {
+	if (!is_understood_url($url)) {
 		$tx->res->body("FAIL: couldn't validate url");
 		$tx->resume();
+		print "Failed due to validation failure\n";
 		return;
 	}
 	print "RPC request to add url: $url\n";
 	my @urls = [];
 	$urls[0] = $url;
-	add_new_urls($tmp_file, \@urls);
+	add_new_urls_args($tmp_file, \@urls);
 	$tx->res->body("SUCCESS");
 	$tx->resume();
 }

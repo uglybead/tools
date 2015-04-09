@@ -25,7 +25,12 @@ $INC[$#INC+1] = $bindir;
 
 use Exporter qw(import);
 
-our @EXPORT_OK = qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
+our @EXPORT_OK = qw(timestamp padTo4 getDomObj deepsleep filePutContents fileGetContents);
+
+sub timestamp {
+        my $dt = DateTime->now();
+        return $dt->ymd . ' ' . $dt->hms;
+}
 
 sub padTo4 {
 

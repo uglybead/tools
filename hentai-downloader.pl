@@ -20,6 +20,14 @@ use DateTime;
 use JSON::RPC::Legacy::Server::Daemon;
 use URI::Encode qw(uri_encode uri_decode);
 
+my $bindir = dirname(__FILE__);
+$INC[$#INC+1] = $bindir;
+
+use g_e_hentai qw(fetch_from_g_e is_g_e_url);
+use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
+
+my @handlers;
+push @handlers, make_pair(\&is_g_e_url, \&fetch_from_g_e);
 
 my $stop = 0;
 my $start = 0;
@@ -37,11 +45,6 @@ chdir($dl_dir);
 
 my $started = 0;
 my @tied_queue;
-
-my $bindir = dirname(__FILE__);
-$INC[$#INC+1] = $bindir;
-
-require 'g-e-hentai-downloader.pl';
 
 my @redownloads;
 
@@ -84,6 +87,17 @@ if(!$start && $stop) {
 	do_stop();
 }
 
+sub is_understood_url {
+	my $url = shift;
+	for (my $i = 0; $i <= $#handlers; ++$i) {
+		my ($validator, $unused) = @{$handlers[$i]};
+		if (&$validator($url)) {
+			return 1==1;
+		}
+	}
+	return 1==0;
+}
+
 sub reverse_queue {
 
 	print "Reversing queue\n";
@@ -100,7 +114,6 @@ sub handle_stop {
 		kill 'TERM', $rpc_pid;
 	}
 }
-
 
 sub handle_new_urls {
 
@@ -121,8 +134,12 @@ sub handle_new_urls {
 		while(<$file>) {
 			my $line = $_;
 			$line =~ s/\s*$//;
-			$tied_queue[$#tied_queue+1] = $line;		
-			print "\tAdded:  " . $line . "\n";
+			if (is_understood_url($line)) {
+				$tied_queue[$#tied_queue+1] = $line;
+				print "\tAdded:  " . $line . "\n";
+			} else {
+				print "\tDon't know how to handle:  " . $line . "\n";
+			}
 		}
 		unlink $tmp_file;
 		close($file);
@@ -295,11 +312,14 @@ sub run_rpc_daemon {
 }
 
 sub validate_url {
-	my $url = shift;
-	if ($url =~ /^http:\/\/g\.e-hentai\.org\/g\/[0-9a-f]+\/[0-9a-f]+\/?$/) {
-		return 1==1;
-	}
-	return 0==1;
+	return is_understood_url(shift());
+}
+
+sub make_pair {
+	my $a = shift;
+	my $b = shift;
+	my @arr = ($a, $b);
+	return \@arr;
 }
 
 sub rpc_daemon_request_handler {

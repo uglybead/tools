@@ -1,5 +1,7 @@
 #!/usr/bin/perl -w
 
+package g_e_hentai;
+
 use strict;
 use warnings;
 use Cwd;
@@ -18,12 +20,27 @@ use Storable;
 use File::Copy;
 use DateTime;
 
-
 my $bindir = dirname(__FILE__);
+$INC[$#INC+1] = $bindir;
+
+use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents);
+
+use Exporter qw(import);
+
+our @EXPORT_OK = qw(fetch_from_g_e is_g_e_url);
+
 my $ge_max_workers = 3;
 my $ge_max_retries = 5;
 my @ge_badfiles = ($bindir . '/g-e-bad-image-1.gif', $bindir . '/g-e-bad-image-2.gif');
 my $ge_long_retries_file = $ENV{'HOME'} . '/' . '.ge-long-retries';
+
+sub is_g_e_url {
+        my $url = shift;
+        if ($url =~ /^http:\/\/g\.e-hentai\.org\/g\/[0-9a-f]+\/[0-9a-f]+\/?$/) {
+                return 1==1;
+        }
+        return 0==1;
+}
 
 sub fetch_from_g_e {
 
@@ -191,17 +208,6 @@ sub checkFile {
 
 }
 
-sub padTo4 {
-
-	my $val = shift;
-
-	while(length($val) < 4) {
-		$val = '0' . $val;
-	}
-	return $val;
-
-}
-
 sub findTitle {
 
 	my $dom = shift;
@@ -235,19 +241,6 @@ sub getTailId {
 	return undef;
 
 }
-
-sub getDomObj {
-
-        my $url = shift;
-
-        my $dt = `curl --max-redirs 8 '$url' 2>/dev/null`;
-
-        my $dom = Mojo::DOM->new($dt);
-
-        return $dom;
-
-}
-
 
 sub findFirstPage {
 
@@ -291,23 +284,6 @@ sub getFirstPage {
 
 }
 
-sub deepsleep {
-	# To keep the various signals from cutting sleeps short
-	my $limit = shift;
-
-	my $end = time() + $limit;
-
-	while(time() < $end) {
-		my $ns = $end - time();
-		if($ns >= 1) {
-			sleep($ns);
-		} else {
-			sleep(1);
-		}
-	}
-
-}
-
 sub saveDelayedRetry {
 
 	my $infourl = shift;
@@ -326,30 +302,6 @@ sub saveDelayedRetry {
 	lock_store(\@ar, $ge_long_retries_file);
 	
 
-}
-
-sub filePutContents {
-
-	my $filename = shift;
-	my $contents = shift;
-
-	open(FILBY, '>', $filename);
-
-        print FILBY $contents;
-
-	close(FILBY);
-
-}
-
-sub fileGetContents {
-	my $filename = shift;
-	open(FILBY, '<', $filename);
-	my $ret = '';
-	while(<FILBY>) {
-		$ret .= $_;
-	}
-	close(FILBY);
-	return $ret;
 }
 
 sub find_redownloads {

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ $# -eq 2 ]; then
+
+	wget "$2" -O "$1""`basename "$2"`"
+else
+	wget "$1"
+fi

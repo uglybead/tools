@@ -87,7 +87,7 @@ sub filePutContents {
 
 sub fileGetContents {
 	my $filename = shift;
-	open(FILBY, '<', $filename);
+	open(FILBY, '<', $filename) or return "";
 	my $ret = '';
 	while(<FILBY>) {
 		$ret .= $_;

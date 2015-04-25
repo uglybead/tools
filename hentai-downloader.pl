@@ -42,6 +42,7 @@ my $rpcdaemonpidfile = $ENV{'HOME'} . '/' . '.ge-downloader-rpc-daemon.pid';
 my $queue    	     = $ENV{'HOME'} . '/' . '.ge-queue';
 my $tmp_file         = $ENV{'HOME'} . '/' . '.ge-sync-tmp';
 my $dl_dir           = $ENV{'HOME'} . '/' . '/ge-downloads/';
+my $curr_file        = $ENV{'HOME'} . '/' . '.ge-current-download';
 my $rpc_pid = -1;
 chdir($dl_dir);
 
@@ -246,6 +247,18 @@ sub run_appropriate_handler {
 	print "None of the handlers knew how to handle: [$url]\n";
 }
 
+sub load_current_file {
+	my $curr_file = shift;
+	my $queue_ref = shift;
+	my $old_url = fileGetContents($curr_file);
+	if ($old_url =~ /^\s*$/) {
+		print "No interrupted download to restart.\n";
+		return;
+	}
+	unshift($queue_ref, $old_url);
+	print "Added a previously running download to the front of the queue: [$old_url]\n";
+}
+
 sub do_start {
 
 	tie @tied_queue, 'Tie::File', $queue or die("Unable to tie the processing queue");
@@ -261,6 +274,8 @@ sub do_start {
 
 	run_rpc_daemon();
 
+	load_current_file($curr_file, \@tied_queue);
+
 	while(! $stop) {
 
 		if($#tied_queue < 0) {
@@ -274,7 +289,9 @@ sub do_start {
 		}
 
 		my $nxturl = shift(@tied_queue);
+		filePutContents($curr_file, $nxturl);
 		run_appropriate_handler($nxturl);
+		filePutContents($curr_file, "");
 		$wait_notify = 0;
 
 	}

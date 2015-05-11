@@ -65,6 +65,10 @@ sub fetch_manga {
 		print "Couldn't find a title for id $manga_id. Skipping\n";
 		return;
 	}
+	if ($title =~ /^\s*$/) {
+		print "Title was empty, using id instead.\n";
+		$title = $manga_id;
+	}
 
 	print "Downloading [$manga_id] : $title\n";
 	mkdir($title);

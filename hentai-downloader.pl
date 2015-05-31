@@ -10,7 +10,7 @@ use File::Basename;
 use Data::Dumper;
 use HTML::Entities;
 use Getopt::Long;
-use POSIX ();
+use POSIX ":sys_wait_h";
 use Fcntl qw(:flock SEEK_END);
 use Tie::File;
 use English;
@@ -250,13 +250,48 @@ sub run_appropriate_handler {
 sub load_current_file {
 	my $curr_file = shift;
 	my $queue_ref = shift;
-	my $old_url = fileGetContents($curr_file);
-	if ($old_url =~ /^\s*$/) {
-		print "No interrupted download to restart.\n";
-		return;
+	for (my $i = 0; $i < scalar(@handlers); ++$i) {
+		my $old_url = fileGetContents($curr_file . '-' . $i);
+		if ($old_url =~ /^\s*$/) {
+			print "No interrupted download to restart.\n";
+			next;
+		}
+		unshift($queue_ref, $old_url);
+		print "Added a previously running download to the front of the queue: [$old_url]\n";
 	}
-	unshift($queue_ref, $old_url);
-	print "Added a previously running download to the front of the queue: [$old_url]\n";
+}
+
+sub get_handlable_url {
+	my $queue_ref = shift;
+	my $matcher = shift;
+	for (my $i = 0; $i < scalar(@{$queue_ref}); ++$i) {
+		if(&$matcher($queue_ref->[$i])) {
+			my $ent = $queue_ref->[$i];
+			splice($queue_ref, $i, 1);
+			return $ent;
+		}
+	}
+	return undef;
+}
+
+sub child_is_done {
+	my $child_pid = shift;
+	my $check = waitpid($child_pid, WNOHANG);
+	return $child_pid == $check;
+}
+
+sub fork_download {
+	my $url = shift;
+	my $index = shift;
+	my $childpid = fork();
+	if ($childpid == 0) {
+		filePutContents($curr_file . '-' . $index, $url);
+		run_appropriate_handler($url);
+		filePutContents($curr_file . '-' . $index, "");
+		exit;
+	} else {
+		return $childpid;
+	}
 }
 
 sub do_start {
@@ -276,8 +311,12 @@ sub do_start {
 
 	load_current_file($curr_file, \@tied_queue);
 
-	while(! $stop) {
+	my @processors;
+	for(my $i = 0; $i < scalar(@handlers); ++$i) {
+		$processors[$i] = undef;
+	}
 
+	while(! $stop) {
 		if($#tied_queue < 0) {
 			if(!$wait_notify) {
 				print "Waiting for new queue items.\n";
@@ -287,13 +326,23 @@ sub do_start {
 			deepsleep(10);
 			next;
 		}
-
-		my $nxturl = shift(@tied_queue);
-		filePutContents($curr_file, $nxturl);
-		run_appropriate_handler($nxturl);
-		filePutContents($curr_file, "");
-		$wait_notify = 0;
-
+		for (my $i = 0; $i < scalar(@handlers); ++$i) {
+			if (defined($processors[$i])) {
+				if (child_is_done($processors[$i])) {
+					$processors[$i] = undef;
+				} else {
+					deepsleep(1);
+					next;
+				}
+			}
+			my $matcher = $handlers[$i]->[0];
+			my $nxturl = get_handlable_url(\@tied_queue, $matcher);
+			if (!defined($nxturl)) {
+				next;
+			}
+			$processors[$i] = fork_download($nxturl, $i);
+			$wait_notify = 0;
+		}
 	}
 
 	unlink $pidfile;

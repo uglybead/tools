@@ -26,7 +26,7 @@ my $bindir = dirname(File::Spec->rel2abs(__FILE__));
 
 use g_e_hentai qw(fetch_from_g_e is_g_e_url);
 use the_doujin qw(fetch_from_the_doujin is_the_doujin_url);
-use e621_pool qw(fetch_from_e621 is_e621_pool_url)
+use e621_pool qw(fetch_from_e621 is_e621_pool_url);
 use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
 
 my @handlers = (make_pair(\&is_g_e_url,        \&fetch_from_g_e),

@@ -30,7 +30,6 @@ our @EXPORT_OK = qw(fetch_from_the_doujin is_the_doujin_url);
 
 my $default_workers = 3;
 my $max_workers = $default_workers;
-my $dl_dir   = $ENV{'HOME'} . '/' . '/ge-downloads/';
 # Limit the usable fetchers.
 $File::Fetch::BLACKLIST = [qw| wget curl lftp fetch lynx iosock|];
 

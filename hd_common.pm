@@ -49,8 +49,14 @@ sub padTo4 {
 sub getDomObj {
 
         my $url = shift;
-
-        my $dt = `curl --max-redirs 8 '$url' 2>/dev/null`;
+	my $dt = '';
+        for (my $i = 0; $i < 5; ++$i) {
+		$dt = `curl --max-redirs 8 '$url' 2>/dev/null`;
+		if ($dt !~ /^\s+$/) {
+			last;
+		}
+		random_deep_sleep(1, 3);
+	}
 
         my $dom = Mojo::DOM->new($dt);
 

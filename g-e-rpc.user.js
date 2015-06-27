@@ -10,22 +10,40 @@
 
 console.log("top of script");
 
-function MakeRpc(url) {
-  console.log("MakeRpc clicked with: " + url);
+function SetIdTxtFunc(txt) {
+  console.log("Called a SetIdTxtFunc");
+  $("#dler").text("[ " + txt + " ]"); 
+}
 
-  GM_xmlhttpRequest({
-    method: "POST",
-    url: "http://localhost:26469/?addr=" + encodeURIComponent(url),
-    timeout: 5000,
+function HandleResponse(resp) {
+  console.log("Got response");
+  console.log(resp);
+  resp_lc = resp.toLowerCase();
+  if (resp_lc.startsWith("success")) {
+    SetIdTxtFunc("✓");
+  }
+  if (resp_lc.startsWith("fail")) {
+    SetIdTxtFunc("f"); 
+  }
+}
 
+function MakeRpc_NonGm(url) {
+  console.log("MakeRpc_NonGm clicked with: " + url);
+  var requrl = "http://localhost:26469/?addr=" + encodeURIComponent(url);
+  console.log("Request url:" + requrl);
+  $.ajax({
+    url: requrl,
+    method: "GET",
+    timeout: 500,
+    error: function(x) { console.log("hi"); SetIdTxtFunc("e"); },
+    success: function(x) { console.log("hi"); HandleResponse(x); },
   });
+  
   console.log("done");
-  console.log(ret);
 }
 
 function RequestRpc(url) {
-  var request_txt = JSON.stringify(['g-e-req-addr', url]);
-  window.postMessage(request_txt, "*");
+  MakeRpc_NonGm(url);
 }
 
 function getTargetId(url) {
@@ -47,30 +65,13 @@ function addDlLink() {
     console.log("No known target_id for url");
     return; 
   }
-  $(target_id).after("<a id='dler'>[ x ]</a>");
+  $(target_id).after("<a id='dler'></a>");
+  SetIdTxtFunc("x");
   $("#dler").click(function() {
     RequestRpc(here);
   });
 }
 
-function listenForRequest(event) {
-  var message;
-  try {
-    message = JSON.parse(event.data);
-  } catch (err) {
-    return;
-  }
-  console.log("Got request: " + message);
-  if (message[0] != "g-e-req-addr") {
-    console.log("Not for us.");
-    return;
-  }
-  if (message.length < 2) {
-    console.log("Message too missing addr?"); 
-  }
-  MakeRpc(message[1]);
-}
-
 console.log("Adding event listeners");
 window.addEventListener("load", addDlLink, false);
-window.addEventListener("message", listenForRequest, false);
+

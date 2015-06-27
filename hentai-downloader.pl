@@ -395,6 +395,17 @@ sub make_pair {
 	return \@arr;
 }
 
+sub finalize_tx {
+	my $tx = shift;
+	my $response = shift;
+	$tx->on(finish => sub {
+		print $response . "\n";
+		print "Transaction finished.\n";
+	});
+	$tx->res->body($response);
+	$tx->resume();
+}
+
 sub rpc_daemon_request_handler {
 	my ($daemon, $tx) = @_;
 	my $method = $tx->req->method;
@@ -402,31 +413,22 @@ sub rpc_daemon_request_handler {
 
 	$tx->res->code(200);
 	$tx->res->headers->content_type('text/plain');
+	$tx->res->headers->add('Access-Control-Allow-Origin', '*');
 
 	if (!defined($tx->req->url->query)) {
-		$tx->res->body("FAIL: no query");		
-		$tx->resume();
-		print "Failed due to no query\n";
-		return;
+		return finalize_tx($tx, "FAIL: no query");
 	}
 	if ($tx->req->url->query !~ /^addr=(.*)$/) {
-		$tx->res->body("FAIL: needs an addr");
-		$tx->resume();
-		print "Failed due to no addr\n";
-		return;
+		return finalize_tx($tx, "FAIL: needs an addr");
 	}
 	my $url = uri_decode($1);
 	if (!is_understood_url($url)) {
-		$tx->res->body("FAIL: couldn't validate url");
-		$tx->resume();
-		print "Failed due to validation failure\n";
-		return;
+		return finalize_tx($tx, "FAIL: couldn't validate url");
 	}
 	print "RPC request to add url: $url\n";
 	my @urls = [];
 	$urls[0] = $url;
 	add_new_urls_args($tmp_file, \@urls);
-	$tx->res->body("SUCCESS");
-	$tx->resume();
+	finalize_tx($tx, "SUCCESS");
 }
 

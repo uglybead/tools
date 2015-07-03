@@ -7,6 +7,7 @@ use QtGui4;
 use QtCore4::debug qw(signals); #qw(ambiguous);
 use Config::Simple;
 use Data::Dumper;
+use URI::URL;
 
 
 my $config_file = $ENV{'HOME'} . '/.prefixes';
@@ -127,6 +128,38 @@ package worker_line {
 
 	}
 
+	sub filename_part {
+                my $url = shift;
+                if ($url !~ /\/([^\/]+\.[^\/]+)$/) {
+                        return undef;
+                }
+                my $trailer = $1;
+                if ($trailer =~ /^(.*)\?.*$/) {
+                        return $1;
+                }
+                return $trailer;
+        }
+
+	sub construct_target_filename {
+		my $prefix = shift;
+		my $url = shift;
+		my $base_dir = shift;
+		return $base_dir . '/' . $prefix . '-' . filename_part($url);
+	}
+
+	sub target_exists {
+		my $prefix = shift;
+		my $url = shift;
+		my $base_dir = shift;
+		return -e construct_target_filename($prefix, $url, $base_dir);
+	}
+
+	sub gen_referer {
+		my $url = shift;
+		my $url_obj = new URI::URL $url;
+		return $url_obj->scheme . '://' . $url_obj->netloc;
+	}
+
 	sub onreturn {
 		#print this->{'prefix_chooser'}->prefix() .  this->text() . "\n";
 		if(!is_uri(this->text())) {
@@ -139,19 +172,30 @@ package worker_line {
 		}
 
 		my $cwd = getcwd();
-		my $ff = File::Fetch->new( uri => this->text());
-		my $final_filename = $cwd . '/' .  this->prefix() . '-' . $ff->output_file;
-		if(-e $final_filename) {
-			this->{'logging_area'}->append("-e:" .this->prefix() . '-' . $ff->output_file . "\n");
-			return;
+		my $prefix = this->prefix();
+		my $url = this->text();
+		my $target = construct_target_filename($prefix, $url, $cwd);
+		if (target_exists($prefix, $url, $cwd)) {
+			this->{'logging_area'}->append("-e: " . $target . "\n");
+			return;		
 		}
+		my $referer = gen_referer($url);
 
-
-		this->{'logging_area'}->append(this->prefix() . ': ' .$ff->output_file . "\n");
-
-		$ff->fetch( to => $ENV{'TMP'});
-		move($ENV{'TMP'} . '/' . $ff->output_file, $final_filename);
-		this->setText('');
+		my $cline = "wget -O '$target' --referer='$referer' '$url' 2>&1";
+		print $cline . "\n";
+		my $wget_output = `$cline`;
+		my $rcode = $?;
+		if ($rcode != 0) {
+			this->{'logging_area'}->append("\n\n" . $wget_output . "\n\n");
+			if (target_exists($prefix, $url, $cwd)) {
+				unlink $target;
+			}
+		}
+		
+		if(-e $target) {
+			this->{'logging_area'}->append(this->prefix() . ': ' . $target . "\n");
+			this->setText('');
+		}
 
 	}
 

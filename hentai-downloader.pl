@@ -20,9 +20,7 @@ use DateTime;
 use JSON::RPC::Legacy::Server::Daemon;
 use URI::Encode qw(uri_encode uri_decode);
 use File::Spec;
-use lib dirname(File::Spec->rel2abs(__FILE__));
-
-my $bindir = dirname(File::Spec->rel2abs(__FILE__));
+use lib dirname(File::Spec->rel2abs(__FILE__)) . '/hd-lib';
 
 use g_e_hentai qw(fetch_from_g_e is_g_e_url);
 use the_doujin qw(fetch_from_the_doujin is_the_doujin_url);

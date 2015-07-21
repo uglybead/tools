@@ -181,7 +181,7 @@ sub download_file_with_retry_to {
                 print "Failed during fetch of image $url\n\n";
                 print "  Retries remaining: $retries \n";
                 random_deep_sleep(30, 60);
-                return download_file_with_retry_to($url, $destination, $retries - 1);
+                return download_file_with_retry_to($url, $destination, $retries - 1, $check_function);
         }
         move($ff->output_file, $destination);
         print "Downloaded $url => $destination\n";

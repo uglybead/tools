@@ -4,6 +4,7 @@
 // @include     http://g.e-hentai.org/g/*/*
 // @include	http://thedoujin.com/index.php/categories/*
 // @include	https://e621.net/pool/show/*
+// @include	http://nhentai.net/g/*/
 // @version     1
 // @grant       GM_xmlhttpRequest
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js
@@ -50,7 +51,8 @@ function RequestRpc(url) {
 function getTargetId(url) {
   var matchers = [["http://g.e-hentai.org/g", "#gn"],
 		  ["http://thedoujin.com/index.php/categories/", "#add-favorite"],
-		  ["https://e621.net/pool/show/", "h4"]];
+		  ["https://e621.net/pool/show/", "h4"],
+		  ["http://nhentai.net/g", "#info"]];
   for(var i = 0; i < matchers.length; ++i) {
     if (url.substring(0, matchers[i][0].length) == matchers[i][0]) {
       return matchers[i][1];

@@ -75,6 +75,7 @@ sub fetch_manga {
 	write_original_url($manga_id, $title);
 	my %page_map = build_page_map($manga_id);
 	download_all_pages(\%page_map, $title, $outdir, \&check_file);
+	print "Finished downloading: $title\n";
 }
 
 sub write_original_url {

@@ -73,6 +73,7 @@ sub fetch_pool {
 	write_original_url($pool_id, $title);
 	my %page_map = build_page_map($pool_id);
 	download_all_pages(\%page_map, $title, $outdir, \&check_file);
+	print "Finished downloading: $title\n";
 }
 
 sub write_original_url {

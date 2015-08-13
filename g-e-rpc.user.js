@@ -5,6 +5,7 @@
 // @include	http://thedoujin.com/index.php/categories/*
 // @include	https://e621.net/pool/show/*
 // @include	http://nhentai.net/g/*/
+// @include	http://pururin.com/gallery/*
 // @version     1
 // @grant       GM_xmlhttpRequest
 // @require     https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js
@@ -37,7 +38,7 @@ function MakeRpc_NonGm(url) {
     url: requrl,
     method: "GET",
     timeout: 500,
-    error: function(x) { console.log("hi"); SetIdTxtFunc("e"); },
+    error: function(x) { console.log("hi"); SetIdTxtFunc("e"); console.log(x); },
     success: function(x) { console.log("hi"); HandleResponse(x); },
   });
   
@@ -52,7 +53,9 @@ function getTargetId(url) {
   var matchers = [["http://g.e-hentai.org/g", "#gn"],
 		  ["http://thedoujin.com/index.php/categories/", "#add-favorite"],
 		  ["https://e621.net/pool/show/", "h4"],
-		  ["http://nhentai.net/g", "#info"]];
+		  ["http://nhentai.net/g", "#info"],
+		  ["http://pururin.com/gallery/", ".otitle"],
+ 		];
   for(var i = 0; i < matchers.length; ++i) {
     if (url.substring(0, matchers[i][0].length) == matchers[i][0]) {
       return matchers[i][1];

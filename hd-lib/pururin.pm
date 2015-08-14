@@ -45,7 +45,7 @@ sub fetch_from_pururin {
 sub download_manga {
 
 	my $url = shift;
-	my %metadata = fetch_metadata($url);
+	my %metadata = fetch_metadata($url, 5);
 	my $title = $metadata{'title'};
 	if (!defined($title)) {
 		print "Couldn't find a title for [$url]. Skipping\n";
@@ -58,7 +58,7 @@ sub download_manga {
 	my $outdir = $title . "/";
 	write_original_url($url, $title);
 	write_tag_data($title, $metadata{'tags'});
-	my %page_map = build_page_map($url);
+	my %page_map = build_page_map($url, 6);
 	download_all_pages(\%page_map, $title, $outdir, \&check_file);
 	print "Finished downloading: $title\n";
 }
@@ -119,6 +119,7 @@ sub find_actual_image_url {
 
 sub build_page_map {
 	my $base_url = shift;
+	my $retries = shift;
 	my $thumb_url = base_url_to_thumb_url($base_url);
 	my %retval;
 	if (!defined($thumb_url)) {
@@ -150,6 +151,10 @@ sub build_page_map {
 		print "    Added page [$image_number]\t\t" . $image_url . "\n";
 		$image_number++;
 	});
+	if (scalar(keys %retval) == 0 && $retries > 0) {
+		print "    Couldn't find any images, retrying.\n";
+		return build_page_map($base_url, $retries - 1);
+	}
 	print "  All pages added\n";
 	random_deep_sleep(2, 7);
 
@@ -180,10 +185,14 @@ sub get_multi_text_by_selector {
 
 sub fetch_metadata {
 	my $url = shift;
+	my $retries = shift;
 	my $dom = getDomObj($url);
 	my %md;
 	$md{'title'} = get_single_text_by_selector($dom, ".otitle");
 	$md{'tags'} = join("\n", get_multi_text_by_selector($dom, ".tag-list > li > a"));
+	if (!defined($md{'title'}) && $retries > 0) {
+		return fetch_metadata($url, $retries - 1);
+	}
 	return %md;
 }
 

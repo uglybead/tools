@@ -46,12 +46,28 @@ sub padTo4 {
 
 }
 
+# As getDomObj, but uses a WWW::Mechanize::Firefox to do it.
+sub getDomObjWithMech {
+	my $url = shift;
+	my $mech = shift;
+	$mech->get($url);
+	my $cont = $mech->content( format => 'html');
+	my $dom = Mojo::DOM->new($cont);
+	return $dom;
+}
+
 sub getDomObj {
 
         my $url = shift;
+	my $mech = shift;
+	if (defined($mech)) {
+		return getDomObjWithMech($url, $mech);
+	}
 	my $dt = '';
         for (my $i = 0; $i < 5; ++$i) {
-		$dt = `curl --max-redirs 8 '$url' 2>/dev/null`;
+		my $execstr = "curl --max-redirs 8 '$url' 2>/dev/null";
+		print "Running: [$execstr] \n";
+		$dt = `$execstr`;
 		if ($dt !~ /^\s+$/) {
 			last;
 		}
@@ -104,16 +120,57 @@ sub fileGetContents {
 	return $ret;
 }
 
+sub outfile_name {
+	my $outdir = shift;
+	my $title = shift;
+	my $key = shift;
+	my $url = shift;
+	return $outdir . $title . ' - ' . sprintf("%04d", $key) . '.' . guess_extension($url);
+}
+
+sub fetch_page_via_mech {
+	my $mech = shift;
+	my $url = shift;
+	my $outfile = shift;
+	my $check_function = shift;
+	my $retries = shift;
+	print "Downloading $url\t\tto\t\t $outfile\n";
+	$mech->get($url);
+	$mech->save_url($url, $outfile);
+	if (!&$check_function($outfile) && $retries > 0) {
+		random_deep_sleep(2, 5);
+		return fetch_page_via_mech($mech, $url, $outfile, $check_function, $retries - 1);
+	}
+	
+}
+
+sub download_all_pages_with_mech {
+	my %page_map = %{ shift() };
+	my $title = shift;
+	my $outdir = shift;
+	my $check_function = shift;
+	my $mech = shift;
+	for my $key (sort keys(%page_map)) {
+		my $outfile = outfile_name($outdir, $title, $key, $page_map{$key});
+		fetch_page_via_mech($mech, $page_map{$key}, $outfile, $check_function, 5);
+		random_deep_sleep(20, 60);
+	}
+}
+
 sub download_all_pages {
         my %page_map = %{ shift() };
         my $title = shift;
         my $outdir = shift;
 	my $check_function = shift;
 	my $workers = shift;
+	my $mech = shift;
+	if (defined($mech)) {
+		return download_all_pages_with_mech(\%page_map, $title, $outdir, $check_function, $mech);
+	}
 	$workers = defined($workers) ? $workers : $default_workers;
         my $active_workers = 0;
         for my $key (sort keys(%page_map)) {
-                my $outfile = $outdir . $title . ' - ' . sprintf("%04d", $key) . '.' . guess_extension($page_map{$key});
+                my $outfile = outfile_name($outdir, $title, $key, $page_map{$key});
                 $active_workers = wait_for_available_worker($active_workers, $workers);
                 download_in_subprocess($page_map{$key}, $outfile, $check_function);
                 random_deep_sleep(20, 60);

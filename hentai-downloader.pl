@@ -26,7 +26,7 @@ use g_e_hentai qw(fetch_from_g_e is_g_e_url);
 use the_doujin qw(fetch_from_the_doujin is_the_doujin_url);
 use e621_pool  qw(fetch_from_e621 is_e621_pool_url);
 use nhentai    qw(fetch_from_nhentai is_nhentai_url);
-use pururin    qw(fetch_from_pururin is_pururin_url);
+use pururin2   qw(fetch_from_pururin is_pururin_url);
 use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
 
 

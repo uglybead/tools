@@ -122,9 +122,9 @@ package worker_line {
 		this->{'prefix_chooser'} = $prefchooser;
 		this->{'logging_area'}   = $logging_area;
 		my $cr = this->connect(this, SIGNAL('returnPressed()'), this,  SLOT('onreturn()'));
-		print "Connect: $cr\n";
+		#print "Connect: $cr\n";
 		$cr = this->connect(this, SIGNAL('textChanged(QString)'), this, SLOT('txtchanged(QString)'));
-		print "Connect: $cr\n";
+		#print "Connect: $cr\n";
 
 	}
 
@@ -163,11 +163,11 @@ package worker_line {
 	sub onreturn {
 		#print this->{'prefix_chooser'}->prefix() .  this->text() . "\n";
 		if(!is_uri(this->text())) {
-			print "The entered text doesn't look like a URL.\n";
+			this->{'logging_area'}->append("The entered text doesn't look like a URL.\n");
 			return;
 		}
 		if(this->prefix() eq "") {
-			print "No prefix selected.\n";
+			this->{'logging_area'}->append("No prefix selected.\n");
 			return;
 		}
 
@@ -182,7 +182,7 @@ package worker_line {
 		my $referer = gen_referer($url);
 
 		my $cline = "wget -O '$target' --referer='$referer' '$url' 2>&1";
-		print $cline . "\n";
+		#print $cline . "\n";
 		my $wget_output = `$cline`;
 		my $rcode = $?;
 		if ($rcode != 0) {
@@ -201,7 +201,7 @@ package worker_line {
 
 	sub txtchanged {
 		my $txt = shift;
-		print "Txt: " . this->presumedOutputFilename()  .  "\n";
+		#print "Txt: " . this->presumedOutputFilename()  .  "\n";
 	}
 
 	sub prefix {
@@ -240,7 +240,7 @@ package toggle_excl_button {
 
 		my $checked = shift;
 
-		print this->text() . ' ' . this->isChecked() . "\n";
+		#print this->text() . ' ' . this->isChecked() . "\n";
 
 	}
 
@@ -269,8 +269,8 @@ sub move_prefix_to_front {
 
 	my @prefixes = @{ $config->param('prefixes') };
 
-	print "Old prefixes:\n";
-	print Dumper(\@prefixes);
+	#print "Old prefixes:\n";
+	#print Dumper(\@prefixes);
 
 	my $found = (1==0);
 
@@ -292,8 +292,8 @@ sub move_prefix_to_front {
 	unshift @prefixes, $pref;
 	$config->param('prefixes', \@prefixes);
 
-	print "New prefixes:\n";
-	print Dumper(\@prefixes);
+	#print "New prefixes:\n";
+	#print Dumper(\@prefixes);
 
 }
 
@@ -325,13 +325,13 @@ package menu_item {
 		$t->SUPER::NEW(@args);
 		my $crv;
 		$crv = this->connect(this, SIGNAL('triggered()'), this, SLOT('menu_item_clicked()'));
-		print "Connect 1: " . ($crv ? 'true' : 'false') . "\n";
+		#print "Connect 1: " . ($crv ? 'true' : 'false') . "\n";
 		$crv = this->connect(this, SIGNAL('hovered()'), this, SLOT('hoverin()'));
-		print "Connect 2: " . ($crv ? 'true' : 'false') . "\n";
+		#print "Connect 2: " . ($crv ? 'true' : 'false') . "\n";
 		this->{'name'} = $args[0];
 		this->{'update_function'} = $func;
 
-		print "Blocked signals: " . (this->signalsBlocked() ? 'true' : 'false') . "\n";
+		#print "Blocked signals: " . (this->signalsBlocked() ? 'true' : 'false') . "\n";
 		#this->trigger();
 		#hoverin();
 		this;
@@ -340,7 +340,7 @@ package menu_item {
 
 	sub hoverin {
 
-		print "Hovering " . this->{'name'} . "\n";
+		#print "Hovering " . this->{'name'} . "\n";
 
 	}
 
@@ -353,7 +353,7 @@ package menu_item {
 
 	sub menu_item_clicked {
 
-		print "Hi\n";
+		#print "Hi\n";
 
 		my $func = this->{'update_function'};
 		&$func(this);
@@ -380,7 +380,7 @@ package menu_sublet {
 
 		my $action = shift;
 
-		print "Got action: $action\n";
+		#print "Got action: $action\n";
 		$action->trigger();
 
 	}
@@ -464,7 +464,7 @@ package prefix_chooser_widget {
 
                         	my $self = shift;
 	                        my $nm = $self->{'name'};
-        	                print "Moving to front: " . $nm  . "\n";
+        	                #print "Moving to front: " . $nm  . "\n";
                 	        main::move_prefix_to_front($nm);
 				$selfless->setCheckedButton(0);
 	                        $selfless->update_buttons();
@@ -491,15 +491,15 @@ package prefix_chooser_widget {
 
 		my $actions = this->{'bmenu'}->menu->actions();
 
-        	print Dumper($actions);
+        	#print Dumper($actions);
 		foreach my $act (@{$actions}) {
-			print Dumper($act->isEnabled()) . "\n";
+			#print Dumper($act->isEnabled()) . "\n";
 		}
 		#$actions->[0]->trigger();
 		#$actions->[0]->trigger();
 		#$actions->[0]->trigger();
 		#print Dumper(this->{'bmenu'}->menu());
-		print "blah\n";
+		#print "blah\n";
 
 	}
 

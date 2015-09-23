@@ -29,7 +29,6 @@ use nhentai    qw(fetch_from_nhentai is_nhentai_url);
 use pururin2   qw(fetch_from_pururin is_pururin_url);
 use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
 
-
 my @handlers = (make_pair(\&is_g_e_url,        \&fetch_from_g_e),
 		make_pair(\&is_the_doujin_url, \&fetch_from_the_doujin),
 		make_pair(\&is_e621_pool_url,  \&fetch_from_e621),
@@ -38,7 +37,6 @@ my @handlers = (make_pair(\&is_g_e_url,        \&fetch_from_g_e),
 
 my $stop = 0;
 my $start = 0;
-my $max_workers = 3;
 my $max_retries = 5;
 my @newurls;
 my $pidfile          = $ENV{'HOME'} . '/' . '.ge-downloader.pid';
@@ -49,6 +47,7 @@ my $tmp_file         = $ENV{'HOME'} . '/' . '.ge-sync-tmp';
 my $dl_dir           = $ENV{'HOME'} . '/' . '/ge-downloads/';
 my $curr_file        = $ENV{'HOME'} . '/' . '.ge-current-download';
 my $rpc_pid = -1;
+binmode(STDOUT, ":utf8");
 chdir($dl_dir);
 
 my $started = 0;
@@ -58,7 +57,6 @@ my @redownloads;
 
 GetOptions( 	"stop" => \$stop,
 		"start" => \$start,
-		"workers=i" => \$max_workers,
 		"add=s" => \@newurls,
 		"re=s" =>  \@redownloads);
 

@@ -173,6 +173,7 @@ package worker_line {
 
 		my $cwd = getcwd();
 		my $prefix = this->prefix();
+		this->{'prefix_chooser'}->promote_prefix($prefix);
 		my $url = this->text();
 		my $target = construct_target_filename($prefix, $url, $cwd);
 		if (target_exists($prefix, $url, $cwd)) {
@@ -244,7 +245,8 @@ package toggle_excl_button {
 
 	}
 
-1;};
+1;
+};
 
 sub in_array {
 
@@ -435,6 +437,13 @@ package prefix_chooser_widget {
 
 	}
 
+	sub promote_prefix {
+		my $prefix = shift;
+		main::move_prefix_to_front($prefix);
+                this->setCheckedButton(0);
+                this->update_buttons();
+	}
+
 	sub update_buttons {
 
 		my @prefixes = $config->param('prefixes');
@@ -465,9 +474,7 @@ package prefix_chooser_widget {
                         	my $self = shift;
 	                        my $nm = $self->{'name'};
         	                #print "Moving to front: " . $nm  . "\n";
-                	        main::move_prefix_to_front($nm);
-				$selfless->setCheckedButton(0);
-	                        $selfless->update_buttons();
+                	        $selfless->promote_prefix($nm);
         	        }));
 	        }
 

@@ -144,7 +144,15 @@ package worker_line {
 		my $prefix = shift;
 		my $url = shift;
 		my $base_dir = shift;
-		return $base_dir . '/' . $prefix . '-' . filename_part($url);
+		my $fname_part = filename_part($url);
+		if (length($fname_part) > 255) {
+			my @bits = split(/\./, $fname_part);
+			my $right = pop @bits;
+			my $left = join('.', @bits);
+			$left = substr($left, 0, 255 - 2 - length($right) - length ($prefix));
+			$fname_part = $left . '.' . $right;
+		}
+		return $base_dir . '/' . $prefix . '-' . $fname_part;
 	}
 
 	sub target_exists {

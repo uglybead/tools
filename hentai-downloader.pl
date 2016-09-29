@@ -46,6 +46,8 @@ my $queue    	     = $ENV{'HOME'} . '/' . '.ge-queue';
 my $tmp_file         = $ENV{'HOME'} . '/' . '.ge-sync-tmp';
 my $dl_dir           = $ENV{'HOME'} . '/' . '/ge-downloads/';
 my $curr_file        = $ENV{'HOME'} . '/' . '.ge-current-download';
+# To generate ssl keys do this:
+# openssl req -nodes -new -newkey rsa:8192 -x509 -keyout ~/.ge-ssl-key -out ~/.ge-ssl-cert
 my $ssl_key	     = pathOrUndef($ENV{'HOME'} . '/' . '.ge-ssl-key');
 my $ssl_cert	     = pathOrUndef($ENV{'HOME'} . '/' . '.ge-ssl-cert');
 my $rpc_pid = -1;

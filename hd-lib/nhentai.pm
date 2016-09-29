@@ -38,7 +38,7 @@ sub is_nhentai_url {
 
 sub get_manga_number {
 	my $url = shift;
-	if ($url =~ /^http:\/\/(?:www.)?nhentai.net\/g\/(\d+)\/?/) {
+	if ($url =~ /^https?:\/\/(?:www.)?nhentai.net\/g\/(\d+)\/?/) {
 		return $1;
 	}
 	return undef;
@@ -91,6 +91,10 @@ sub check_file {
 
 sub find_actual_image_url {
 	my $page_url = shift;
+	my $retries = shift;
+	if (!defined($retries)) {
+		$retries = 5;
+	}
 	my $dom = getDomObj($page_url);
 	my $ret = undef;
 	$dom->find("#image-container img")->each(sub {
@@ -101,11 +105,14 @@ sub find_actual_image_url {
 		my $url = $ent->attr('src');
 		if ($url !~ /^https?:\/\//) {
 			$url =~ s/^\/*//;
-			$url = 'http://' . $url;
+			$url = 'https://' . $url;
 		}
 		$ret = $url;
 	});
 	random_deep_sleep(1, 3);
+	if (!defined($ret) && $retries > 0) {
+		return find_actual_image_url($page_url, $retries - 1);
+	}
 	return $ret;
 }
 
@@ -127,7 +134,7 @@ sub build_page_map {
 		my $url = $ent->attr('href');
 		if ($url !~ /^https?:\/\//) {
 			$url =~ s/^\/*//;
-			$url = 'http://nhentai.net/' . $url;
+			$url = 'https://nhentai.net/' . $url;
 		}
 		my $image_url = find_actual_image_url($url);
 		if (!defined($image_url)) {
@@ -162,7 +169,7 @@ sub find_title_in_dom {
 
 sub manga_url {
 	my $pool_id = shift;
-	return "http://nhentai.net/g/" . $pool_id . '/';
+	return "https://nhentai.net/g/" . $pool_id . '/';
 }
 
 1;

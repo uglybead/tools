@@ -27,7 +27,7 @@ use the_doujin qw(fetch_from_the_doujin is_the_doujin_url);
 use e621_pool  qw(fetch_from_e621 is_e621_pool_url);
 use nhentai    qw(fetch_from_nhentai is_nhentai_url);
 use pururin2   qw(fetch_from_pururin is_pururin_url);
-use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp);
+use hd_common qw(padTo4 getDomObj deepsleep filePutContents fileGetContents timestamp pathOrUndef);
 
 my @handlers = (make_pair(\&is_g_e_url,        \&fetch_from_g_e),
 		make_pair(\&is_the_doujin_url, \&fetch_from_the_doujin),
@@ -46,6 +46,8 @@ my $queue    	     = $ENV{'HOME'} . '/' . '.ge-queue';
 my $tmp_file         = $ENV{'HOME'} . '/' . '.ge-sync-tmp';
 my $dl_dir           = $ENV{'HOME'} . '/' . '/ge-downloads/';
 my $curr_file        = $ENV{'HOME'} . '/' . '.ge-current-download';
+my $ssl_key	     = pathOrUndef($ENV{'HOME'} . '/' . '.ge-ssl-key');
+my $ssl_cert	     = pathOrUndef($ENV{'HOME'} . '/' . '.ge-ssl-cert');
 my $rpc_pid = -1;
 binmode(STDOUT, ":utf8");
 chdir($dl_dir);
@@ -381,8 +383,11 @@ sub run_rpc_daemon {
 	write_rpc_daemon_pid();
 	$SIG{'TERM'} = "DEFAULT";  # Infinite kill loops are bad
 	my $port = int(ord('g') * 256 + ord('e'));  # 26469
+	my $ssl_stanza = (!defined($ssl_key) || !defined($ssl_cert)) ? "" :
+			 "?cert=" . $ssl_cert . "&key=" . $ssl_key;
+	my $http = "http" . ($ssl_stanza eq "" ? "" : "s");
 	my $daemon = Mojo::Server::Daemon->new(
-		listen => ['http://127.0.0.1:' . $port]);
+		listen => [$http . '://127.0.0.1:' . $port . $ssl_stanza]);
 	$daemon->unsubscribe('request');
 	$daemon->on(request => \&rpc_daemon_request_handler);
 	$daemon->run;

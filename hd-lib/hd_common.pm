@@ -26,9 +26,17 @@ my $bindir = dirname(File::Spec->rel2abs(__FILE__));;
 
 use Exporter qw(import);
 
-our @EXPORT_OK = qw(timestamp padTo4 getDomObj deepsleep filePutContents fileGetContents download_all_pages random_deep_sleep);
+our @EXPORT_OK = qw(timestamp padTo4 getDomObj deepsleep filePutContents fileGetContents download_all_pages random_deep_sleep get_single_text_by_selector get_multi_text_by_selector pathOrUndef);
 
 my $default_workers = 3;
+
+sub pathOrUndef {
+	my $path = shift;
+	if (-e $path && -r $path) {
+		return $path;
+	}
+	return undef;
+}
 
 sub timestamp {
         my $dt = DateTime->now();
@@ -128,6 +136,13 @@ sub outfile_name {
 	return $outdir . $title . ' - ' . sprintf("%04d", $key) . '.' . guess_extension($url);
 }
 
+sub minimal_check {
+	my $filename = shift;
+	return (0==1) if (! -e $filename);
+	return (0==1) if (-z $filename);
+	return 1==1;
+}
+
 sub fetch_page_via_mech {
 	my $mech = shift;
 	my $url = shift;
@@ -137,7 +152,7 @@ sub fetch_page_via_mech {
 	print "Downloading $url\t\tto\t\t $outfile\n";
 	$mech->get($url);
 	$mech->save_url($url, $outfile);
-	if (!&$check_function($outfile) && $retries > 0) {
+	if ((!minimal_check($outfile) || !&$check_function($outfile)) && $retries > 0) {
 		random_deep_sleep(2, 5);
 		return fetch_page_via_mech($mech, $url, $outfile, $check_function, $retries - 1);
 	}
@@ -150,11 +165,39 @@ sub download_all_pages_with_mech {
 	my $outdir = shift;
 	my $check_function = shift;
 	my $mech = shift;
-	for my $key (sort keys(%page_map)) {
+	for my $key (nkeys(%page_map)) {
 		my $outfile = outfile_name($outdir, $title, $key, $page_map{$key});
 		fetch_page_via_mech($mech, $page_map{$key}, $outfile, $check_function, 5);
 		random_deep_sleep(20, 60);
 	}
+}
+
+sub nkeys {
+	my %map = @_;
+	return sort( map {int($_);} keys(%map));
+}
+
+sub download_all_pages_standard {
+	my %page_map = %{ shift() };
+	my $title = shift;
+	my $outdir = shift;
+	my $check_function = shift;
+	my $workers = shift;
+
+	my $double_check = sub {
+		my $file = shift;
+		return &$check_function($file) && minimal_check($file);
+	};
+
+	$workers = defined($workers) ? $workers : $default_workers;
+	my $active_workers = 0;
+	for my $key (nkeys(%page_map)) {
+                my $outfile = outfile_name($outdir, $title, $key, $page_map{$key});
+                $active_workers = wait_for_available_worker($active_workers, $workers);
+                download_in_subprocess($page_map{$key}, $outfile, $double_check);
+                random_deep_sleep(20, 60);
+        }
+        wait_on_all_workers($active_workers);	
 }
 
 sub download_all_pages {
@@ -166,16 +209,9 @@ sub download_all_pages {
 	my $mech = shift;
 	if (defined($mech)) {
 		return download_all_pages_with_mech(\%page_map, $title, $outdir, $check_function, $mech);
+	} else {
+		return download_all_pages_standard(\%page_map, $title, $outdir, $check_function, $mech);
 	}
-	$workers = defined($workers) ? $workers : $default_workers;
-        my $active_workers = 0;
-        for my $key (sort keys(%page_map)) {
-                my $outfile = outfile_name($outdir, $title, $key, $page_map{$key});
-                $active_workers = wait_for_available_worker($active_workers, $workers);
-                download_in_subprocess($page_map{$key}, $outfile, $check_function);
-                random_deep_sleep(20, 60);
-        }
-        wait_on_all_workers($active_workers);
 }
 
 sub download_in_subprocess {
@@ -257,6 +293,28 @@ sub random_deep_sleep {
         my $minimum = shift();
         my $maximum = shift();
         deepsleep($minimum + rand($maximum - $minimum));
+}
+
+sub get_single_text_by_selector {
+        my $dom = shift;
+        my $matcher = shift;
+        my $ret = undef;
+        $dom->find($matcher)->each(sub {
+                my $ent = shift;
+                $ret = $ent->text;
+        });
+        return $ret;
+}
+
+sub get_multi_text_by_selector {
+        my $dom = shift;
+        my $matcher = shift;
+        my @ret;
+        $dom->find($matcher)->each(sub {
+                my $ent = shift;
+                $ret[scalar(@ret)] = $ent->text;
+        });
+        return @ret;
 }
 
 1;

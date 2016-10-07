@@ -21,6 +21,7 @@ use File::Copy;
 use DateTime;
 use File::Spec;
 use lib dirname(File::Spec->rel2abs(__FILE__));
+use WWW::Curl::Easy;
 
 my $bindir = dirname(File::Spec->rel2abs(__FILE__));;
 
@@ -262,23 +263,41 @@ sub download_file_with_retry_to {
                 print "Unable to download [$url] => [$destination]\n";
                 exit();
         }
+	my $user_agent = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36";
 
-        # So, file::fetch doesn't work with https, yet (though a fix has been recently merged). We'll just degrade for now and maybe someday someone will fix it.
-        $url =~ s/^https:\/\//http:\/\//;
-
-        my $ff = undef;
-        $ff = File::Fetch->new(uri => $url);
-        $File::Fetch::USER_AGENT = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36";
-        #$File::Fetch::WARN = (0 == 1);
-        if(!$ff->fetch() || ! (&$check_function($ff->output_file))) {
+	my $tmp_file = $destination . ".tmp";
+	if (!curl_download($url, $tmp_file, $user_agent) || ! (&$check_function($tmp_file))) {
                 print "Failed during fetch of image $url\n\n";
                 print "  Retries remaining: $retries \n";
                 random_deep_sleep(30, 60);
                 return download_file_with_retry_to($url, $destination, $retries - 1, $check_function);
-        }
-        move($ff->output_file, $destination);
+	}
+	move($tmp_file, $destination);
         print "Downloaded $url => $destination\n";
-        exit();
+	exit();
+}
+
+sub curl_download {
+	my $url = shift;
+	my $destination = shift;
+	my $user_agent = shift;
+	my $curl = WWW::Curl::Easy->new;
+
+	$curl->setopt(CURLOPT_URL, $url);
+	$curl->setopt(CURLOPT_USERAGENT, $user_agent);
+	$curl->setopt(CURLOPT_FOLLOWLOCATION, 1);
+	$curl->setopt(CURLOPT_MAXREDIRS, 8);
+	my $dt;
+	$curl->setopt(CURLOPT_WRITEDATA, \$dt);	
+	my $ret = $curl->perform();
+	print "Fetched " . length($dt) . " bytes (or maybe " . $curl->getinfo(CURLINFO_SIZE_DOWNLOAD) . ")\n";
+	filePutContents($destination, $dt);
+	if ($ret != 0) {
+		print "Curl download error for [$url]\n";
+		print "Return code: $ret\n". $curl->strerror($ret) . "\n" . $curl->errbuf . "\n";
+		return 0==1;
+	}
+	return 1==1;
 }
 
 sub guess_extension {

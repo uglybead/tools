@@ -397,6 +397,7 @@ package menu_sublet {
 
 }
 
+
 package prefix_chooser_widget {
 
 	use QtCore4;
@@ -407,17 +408,29 @@ package prefix_chooser_widget {
 
 		shift->SUPER::NEW(@_);
 
-		this->{'button_count'} = 3;
+		this->{'button_count'} = 7;
+		this->{'buttons_per_row'} = 4;
 		my @empty;
 		this->{'buttons'} = \@empty;
 		this->{'bmenu'}  = undef;
-		this->setLayout(Qt::HBoxLayout(this));
+		#this->setLayout(Qt::HBoxLayout(this));
+		this->setLayout(Qt::GridLayout(this));
 		this->update_buttons();
-		for(my $i = 0; $i < this->{'button_count'}; ++$i) {
-			this->layout->addWidget(this->{'buttons'}->[$i]);
+		my $i = 0;
+		for(; $i < this->{'button_count'}; ++$i) {
+			my($row, $column) = row_column(this->{'buttons_per_row'}, $i);
+			this->layout->addWidget(this->{'buttons'}->[$i], $row, $column, 1, 1);
 		}
-		this->layout->addWidget(this->{'bmenu'});
+		my($row, $column) = row_column(this->{'buttons_per_row'}, $i);		
+		this->layout->addWidget(this->{'bmenu'}, $row, $column, 1, 1);
 	}
+
+	sub row_column {
+		my $columns = shift;
+		my $val = shift;
+		return int($val / $columns), $val % $columns;
+	}
+
 
 	sub prefix {
 

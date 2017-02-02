@@ -164,6 +164,8 @@ sub find_title_in_dom {
                 my $ent = shift;
                 $ret = $ent->text;
         });
+	# Slashes become spaces.
+	$ret =~ s/\// /g;
 	return $ret;
 }
 

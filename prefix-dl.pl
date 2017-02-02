@@ -186,6 +186,7 @@ package worker_line {
 		my $target = construct_target_filename($prefix, $url, $cwd);
 		if (target_exists($prefix, $url, $cwd)) {
 			this->{'logging_area'}->append("-e: " . $target . "\n");
+			this->clear();
 			return;		
 		}
 		my $referer = gen_referer($url);
@@ -203,7 +204,7 @@ package worker_line {
 		
 		if(-e $target) {
 			this->{'logging_area'}->append(this->prefix() . ': ' . $target . "\n");
-			this->setText('');
+			this->clear();
 		}
 
 	}

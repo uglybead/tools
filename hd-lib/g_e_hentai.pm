@@ -38,7 +38,7 @@ my $ge_long_retries_file = $ENV{'HOME'} . '/' . '.ge-long-retries';
 
 sub is_g_e_url {
         my $url = shift;
-        if ($url =~ /^http:\/\/g\.e-hentai\.org\/g\/[0-9a-f]+\/[0-9a-f]+\/?$/) {
+        if ($url =~ /^https?:\/\/e-hentai\.org\/g\/[0-9a-f]+\/[0-9a-f]+\/?$/) {
                 return 1==1;
         }
         return 0==1;

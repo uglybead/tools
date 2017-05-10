@@ -63,7 +63,7 @@ sub fetch_from_g_e {
 	my $outdir = undef;
 
 	while($url ne $lasturl) {
-
+		print "Looking for images on page " . $url . "\n";
 		my $tailid = getTailId($url);
 
 		my $current_page = $url;
@@ -83,7 +83,7 @@ sub fetch_from_g_e {
 					$baseurl);
 		}
 
-		$dm->find("div.sni > a")->each(sub {
+		$dm->find("div#i3 > a")->each(sub {
 
 			my $ent = shift;
 
@@ -122,7 +122,7 @@ sub fetch_from_g_e {
 
 			exit 0;
 		});
-
+		print "Images found so far: " . $imgcnt . "\n";
 	}
 
 	print "All images enqueued, waiting on workers to finish. (" . $current_children . " outstanding workers) " . timestamp() . "\n";
